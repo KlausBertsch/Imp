@@ -214,7 +214,7 @@ func (ite IfThenElse) eval(s ValState,level int) {
         }
 
     } else {
-        fmt.Printf("if-then-else eval fail")
+        fmt.Printf("\n if-then-else eval fail")
     }
 
 }
@@ -226,7 +226,7 @@ func (while While) eval(s ValState,level int) {
             while.whileStmt.eval(s,level+1) //add a level to the  Val map, so local variables can be added
             v = while.cond.eval(s,level) //evaluation of the condition can only happen on the initial one
             if v.flag != ValueBool {
-                fmt.Printf("while eval fail")
+                fmt.Printf("\n while eval fail")
             }
         }
         for k, _ := range s { // delete all variables added in the While loop
@@ -235,7 +235,7 @@ func (while While) eval(s ValState,level int) {
             }
         }
     } else {
-        fmt.Printf("while eval fail")
+        fmt.Printf("\n while eval fail")
     }
 }
 
@@ -256,10 +256,14 @@ func (assign Assign) eval(s ValState,level int) {
     v := assign.rhs.eval(s,level)
     x := (string)(assign.lhs)
     for i := level; i >= 0; i-- {//check for the variable on all higher levels, if there are any 
-    k := key{x,i}
-    if _, ok := s[k]; ok {//assign variable on highest level, a variable with that name exists
-        s[k] = v
-    }
+        k := key{x,i}
+        if val, ok := s[k]; ok {//assign variable on highest level, a variable with that name exists
+            if(v.flag == val.flag) {
+                s[k] = v
+            } else {
+                fmt.Printf("\n assign eval fail")//variable not correctly typed
+            }
+        }
     }
 }
 
@@ -780,7 +784,10 @@ func st8() { //test for usage of local variables with same names as higher order
     ast := seq(decl("x",boolean(true)),seq(while(variable("x"),seq(assign("x",boolean(false)),ite(boolean(true),decl("x",number(1)),decl("x",number(2))))),printer(variable("x"))))
     runSt(ast)
 }
-
+func st9() { //test for usage of local variables with same names as higher order ones
+    ast := seq(decl("x",boolean(true)),seq(ite(boolean(true),decl("x",number(1)),decl("x",number(2))),seq(ite(boolean(true),assign("x",number(9)),assign("x",number(6))),printer(variable("x")))))
+    runSt(ast)
+}
 func main() {
 
     fmt.Printf("\n")
@@ -795,4 +802,5 @@ func main() {
     st5()
     st7()
     st8()
+    st9()
 } 
