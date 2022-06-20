@@ -44,6 +44,7 @@ type Val struct {
     flag Kind
     valI int
     valB bool
+    local bool
 }
 
 func mkInt(x int) Val {
@@ -194,11 +195,15 @@ func (stmt Seq) eval(s ValState) {
 func (ite IfThenElse) eval(s ValState) {
     v := ite.cond.eval(s)
     if v.flag == ValueBool {
+        s2 := make(map[string]Val)
+        for k,val := range s {
+            s2[k] = val
+        }
         switch {
         case v.valB:
-            ite.thenStmt.eval(s)
+            ite.thenStmt.eval(s2)
         case !v.valB:
-            ite.elseStmt.eval(s)
+            ite.elseStmt.eval(s2)
         }
 
     } else {
@@ -210,11 +215,26 @@ func (ite IfThenElse) eval(s ValState) {
 func (while While) eval(s ValState) {
     v := while.cond.eval(s)
     if v.flag == ValueBool {
+        s2 := make(map[string]Val)
+        for k,val := range s {
+            s2[k] = val
+        }
         for v.valB {
-            while.whileStmt.eval(s)
-            v = while.cond.eval(s)
+            while.whileStmt.eval(s2)
+            if fmt.Sprintf("%T", while.whileStmt) == "Decl" {
+                _,ok := while.whileStmt.(Decl)
+                fmt.Printf("%b",ok)
+            }
+            v = while.cond.eval(s2)
             if v.flag != ValueBool {
                 fmt.Printf("while eval fail")
+            }
+        }
+        for k,val := range s2 {
+            if _, ok := s[k]; ok {
+                if !val.local {
+                    s[k] = s2[k]
+                }
             }
         }
 
@@ -228,7 +248,6 @@ func (printer Print) eval(s ValState) {
     fmt.Printf("\n printer: %s", showVal(x))
 }
 
-
 // Maps are represented via points.
 // Hence, maps are passed by "reference" and the update is visible for the caller as well.
 func (decl Decl) eval(s ValState) {
@@ -240,7 +259,9 @@ func (decl Decl) eval(s ValState) {
 func (assign Assign) eval(s ValState) {
     v := assign.rhs.eval(s)
     x := (string)(assign.lhs)
-    s[x] = v
+    if _, ok := s[x]; ok {
+        s[x] = v
+    }
 }
 
 // type check
@@ -265,7 +286,12 @@ func (decl Decl) check(t TyState) bool {
 
 func (a Assign) check(t TyState) bool {
         x := (string)(a.lhs)
-        return t[x] == a.rhs.infer(t)
+        if val, ok := t[x]; ok {
+            return val == a.rhs.infer(t)
+        } else {
+            return false
+        }
+        
 }
 
 func (ite IfThenElse) check(t TyState) bool {
@@ -578,7 +604,7 @@ func (e Equ) infer(t TyState) Type {
         return TyBool
     }
     if t1 == TyInt && t2 == TyInt {
-        return TyInt
+        return TyBool
     }
     return TyIllTyped
 }
@@ -761,6 +787,11 @@ func st6() {
     runSt(ast)
 }
 
+func st7() {
+    ast := seq(decl("x",number(1)),seq(ite(less(variable("x"),number(1)),decl("x",number(2)),decl("x",number(3))),printer(variable("x"))))
+    runSt(ast)
+}
+
 func main() {
 
     fmt.Printf("\n")
@@ -773,5 +804,5 @@ func main() {
     st3()
     st4()
     st5()
-    st6()
+    st7()
 }
