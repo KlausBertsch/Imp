@@ -257,12 +257,8 @@ func (assign Assign) eval(s ValState,level int) {
     x := (string)(assign.lhs)
     for i := level; i >= 0; i-- {//check for the variable on all higher levels, if there are any 
         k := key{x,i}
-        if val, ok := s[k]; ok {//assign variable on highest level, a variable with that name exists
-            if(v.flag == val.flag) {
-                s[k] = v
-            } else {
-                fmt.Printf("\n assign eval fail")//variable not correctly typed
-            }
+        if _, ok := s[k]; ok {//assign variable on highest level, a variable with that name exists
+            s[k] = v
         }
     }
 }
